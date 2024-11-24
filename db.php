@@ -2,7 +2,7 @@
 $servername = "localhost";
 $username = "root";
 $password = "";
-$database = "library_management";
+$database = "library_db";
 
 $conn = new mysqli($servername, $username, $password, $database);
 

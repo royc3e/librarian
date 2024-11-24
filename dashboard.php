@@ -84,6 +84,7 @@ $userType = htmlspecialchars($_SESSION['UserType']);
         <p>Welcome, <strong><?php echo $userName; ?></strong></p>
         <p>User Type: <strong><?php echo ucfirst($userType); ?></strong></p>
         <?php
+        // Dynamically generate sidebar links based on user type
         if ($userType == 'admin') {
             echo '<a href="user_management.php">Manage Users</a>';
             echo '<a href="reports.php">Generate Reports</a>';
@@ -116,6 +117,7 @@ $userType = htmlspecialchars($_SESSION['UserType']);
                 <h5 class="card-title"><?php echo ucfirst($userType); ?> Overview</h5>
                 <p class="card-text">
                     <?php
+                    // Display a message based on user type
                     if ($userType == 'admin') {
                         echo 'Manage users, system settings, and view reports.';
                     } elseif ($userType == 'student') {
@@ -130,6 +132,7 @@ $userType = htmlspecialchars($_SESSION['UserType']);
             </div>
         </div>
     </div>
+
     <!-- Include Bootstrap JS for optional interactivity -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

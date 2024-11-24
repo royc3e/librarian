@@ -12,12 +12,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
         $borrowingLimit = ($userType == 'student') ? 3 : 5;
 
-        $sql = "INSERT INTO Users (Name, UserType, MembershipID, ContactDetails, Password, BorrowingLimit) 
-                VALUES ('$name', '$userType', '$membershipID', '$contactDetails', '$password', $borrowingLimit)";
-        if ($conn->query($sql) === TRUE) {
-            $message = "User added successfully!";
+        // Check if membership_id already exists
+        $checkSql = "SELECT * FROM Users WHERE MembershipID = '$membershipID'";
+        $result = $conn->query($checkSql);
+        if ($result->num_rows > 0) {
+            $message = "Error: Membership ID already exists!";
         } else {
-            $message = "Error adding user: " . $conn->error;
+            // Insert the new user
+            $sql = "INSERT INTO Users (Name, UserType, MembershipID, ContactDetails, Password, BorrowingLimit) 
+                    VALUES ('$name', '$userType', '$membershipID', '$contactDetails', '$password', $borrowingLimit)";
+            if ($conn->query($sql) === TRUE) {
+                $message = "User added successfully!";
+            } else {
+                $message = "Error adding user: " . $conn->error;
+            }
         }
     } elseif (isset($_POST['edit_user'])) {
         // Edit User Logic
@@ -25,13 +33,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $name = $_POST['name'];
         $userType = $_POST['user_type'];
         $contactDetails = $_POST['contact_details'];
+        $membershipID = $_POST['membership_id'];
         $borrowingLimit = ($userType == 'student') ? 3 : 5;
+        $password = isset($_POST['password']) && !empty($_POST['password']) ? password_hash($_POST['password'], PASSWORD_DEFAULT) : '';
 
-        $sql = "UPDATE Users SET Name = '$name', UserType = '$userType', ContactDetails = '$contactDetails', BorrowingLimit = $borrowingLimit WHERE UserID = $userID";
-        if ($conn->query($sql) === TRUE) {
-            $message = "User updated successfully!";
+        // Check if membership_id already exists for a different user
+        $checkSql = "SELECT * FROM Users WHERE MembershipID = '$membershipID' AND UserID != $userID";
+        $result = $conn->query($checkSql);
+        if ($result->num_rows > 0) {
+            $message = "Error: Membership ID already exists for another user!";
         } else {
-            $message = "Error updating user: " . $conn->error;
+            // Update the user
+            $sql = "UPDATE Users SET Name = '$name', UserType = '$userType', ContactDetails = '$contactDetails', 
+                    BorrowingLimit = $borrowingLimit, MembershipID = '$membershipID'";
+
+            // Include password update if it's provided
+            if (!empty($password)) {
+                $sql .= ", Password = '$password'";
+            }
+
+            $sql .= " WHERE UserID = $userID";
+
+            if ($conn->query($sql) === TRUE) {
+                $message = "User updated successfully!";
+            } else {
+                $message = "Error updating user: " . $conn->error;
+            }
         }
     } elseif (isset($_POST['delete_user'])) {
         // Delete User Logic
@@ -49,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 // Fetch All Users
 $users = $conn->query("SELECT * FROM Users");
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -134,7 +162,7 @@ $users = $conn->query("SELECT * FROM Users");
                         <td><?php echo $user['BorrowingLimit']; ?></td>
                         <td>
                             <!-- Edit Button -->
-                            <button class="btn btn-primary btn-sm" onclick="editUser(<?php echo $user['UserID']; ?>, '<?php echo htmlspecialchars($user['Name']); ?>', '<?php echo htmlspecialchars($user['UserType']); ?>', '<?php echo htmlspecialchars($user['ContactDetails']); ?>')">Edit</button>
+                            <button class="btn btn-primary btn-sm" onclick="editUser(<?php echo $user['UserID']; ?>, '<?php echo htmlspecialchars($user['Name']); ?>', '<?php echo htmlspecialchars($user['UserType']); ?>', '<?php echo htmlspecialchars($user['ContactDetails']); ?>', '<?php echo htmlspecialchars($user['MembershipID']); ?>')">Edit</button>
                             <!-- Delete Form -->
                             <form method="POST" style="display:inline;">
                                 <input type="hidden" name="delete_user" value="1">
@@ -150,7 +178,7 @@ $users = $conn->query("SELECT * FROM Users");
     </div>
     <!-- Edit User Script -->
     <script>
-        function editUser(userID, name, userType, contactDetails) {
+        function editUser(userID, name, userType, contactDetails, membershipID) {
             const formHTML = `
                 <div class="form-container">
                     <h2>Edit User</h2>
@@ -170,8 +198,16 @@ $users = $conn->query("SELECT * FROM Users");
                             </select>
                         </div>
                         <div class="mb-3">
+                            <label for="membership_id" class="form-label">Membership ID</label>
+                            <input type="text" name="membership_id" id="membership_id" class="form-control" value="${membershipID}" required>
+                        </div>
+                        <div class="mb-3">
                             <label for="contact_details" class="form-label">Contact Details</label>
                             <input type="text" name="contact_details" id="contact_details" class="form-control" value="${contactDetails}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password (leave blank if not changing)</label>
+                            <input type="password" name="password" id="password" class="form-control">
                         </div>
                         <button type="submit" class="btn btn-primary">Update User</button>
                     </form>
