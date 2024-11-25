@@ -1,5 +1,15 @@
 <?php
+session_start();
+
 include 'db.php';
+include 'navigation.php';
+
+
+// Check if the user is logged in
+if (!isset($_SESSION['UserID'])) {
+    header('Location: login.php');
+    exit();
+}
 
 // Enable error reporting for debugging
 ini_set('display_errors', 1);
@@ -13,8 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_book'])) {
     $genre = $_POST['genre'];
     $isbn = $_POST['isbn'];
     $quantity = $_POST['quantity'];
-    $accessionNumber = "ACC" . strtoupper(uniqid());
-    $resourceId = "RES" . strtoupper(uniqid());
+    $resourceId = $_POST['resourceId']; // Get the resourceId from the form
 
     // Check for duplicate ISBN
     $stmt = $conn->prepare("SELECT * FROM Books WHERE ISBN = ?");
@@ -25,21 +34,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_book'])) {
     if ($result->num_rows > 0) {
         $message = "<div class='error-message'>Error: A book with this ISBN already exists.</div>";
     } else {
-        $stmt = $conn->prepare("INSERT INTO Books (Title, Author, Publisher, Genre, ISBN, AccessionNumber, Quantity, AvailableQuantity, resourceId) 
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        if ($stmt) {
-            $stmt->bind_param("ssssssiii", $title, $author, $publisher, $genre, $isbn, $accessionNumber, $quantity, $quantity, $resourceId);
-            
-            if ($stmt->execute()) {
-                $message = "<div class='success-message'>Book added successfully!</div>";
-                header("Location: " . $_SERVER['PHP_SELF']);
-                exit;
-            } else {
-                $message = "<div class='error-message'>Error: " . $stmt->error . "</div>";
-            }
-            $stmt->close();
+        // Check for duplicate ResourceID
+        $stmt = $conn->prepare("SELECT * FROM Books WHERE ResourceID = ?");
+        $stmt->bind_param("s", $resourceId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $message = "<div class='error-message'>Error: A book with this Resource ID already exists.</div>";
         } else {
-            $message = "<div class='error-message'>Error preparing statement: " . $conn->error . "</div>";
+            // Generate a unique ResourceID if not provided
+            if (empty($resourceId)) {
+                $resourceId = strtoupper(uniqid('RES', true));  // Create a unique ResourceID
+            }
+
+            // Prepare SQL statement
+            $stmt = $conn->prepare("INSERT INTO Books (Title, Author, Publisher, Genre, ISBN, AccessionNumber, Quantity, AvailableQuantity, resourceId) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+            // Bind parameters to the prepared statement
+            if ($stmt) {
+                $accessionNumber = strtoupper(uniqid());  // Generate unique accession number
+
+                $stmt->bind_param("ssssssiii", $title, $author, $publisher, $genre, $isbn, $accessionNumber, $quantity, $quantity, $resourceId);
+
+                // Execute the statement
+                if ($stmt->execute()) {
+                    $message = "<div class='success-message'>Book added successfully!</div>";
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                    exit;
+                } else {
+                    $message = "<div class='error-message'>Error: " . $stmt->error . "</div>";
+                }
+                $stmt->close();
+            } else {
+                $message = "<div class='error-message'>Error preparing statement: " . $conn->error . "</div>";
+            }
         }
     }
     $stmt->close();
@@ -54,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_book'])) {
     $genre = $_POST['genre'];
     $isbn = $_POST['isbn'];
     $quantity = $_POST['quantity'];
-    $resourceId = $_POST['resourceId']; // Ensure you add this field to the form if editing
+    $resourceId = $_POST['resourceId']; // Get the resourceId from the form
 
     $sql = "UPDATE Books 
             SET Title='$title', Author='$author', Publisher='$publisher', Genre='$genre', ISBN='$isbn', Quantity='$quantity', AvailableQuantity='$quantity', resourceId='$resourceId' 
@@ -296,8 +326,8 @@ $result = $conn->query("SELECT * FROM Books");
                 <th>ISBN</th>
                 <th>Accession Number</th>
                 <th>Quantity</th>
-                <th>Available Quantity</th>
-                <th>Actions</th>
+                <th>Resource ID</th>
+                <th>Action</th>
             </tr>
             <?php if ($result->num_rows > 0): ?>
                 <?php while ($row = $result->fetch_assoc()): ?>
@@ -309,60 +339,57 @@ $result = $conn->query("SELECT * FROM Books");
                         <td><?php echo $row['ISBN']; ?></td>
                         <td><?php echo $row['AccessionNumber']; ?></td>
                         <td><?php echo $row['Quantity']; ?></td>
-                        <td><?php echo $row['AvailableQuantity']; ?></td>
+                        <td><?php echo $row['ResourceID']; ?></td>
                         <td>
-                            <!-- Edit Button -->
                             <button class="edit-btn" onclick="editBook(<?php echo $row['BookID']; ?>)">Edit</button>
-
-                            <!-- Delete Button -->
                             <a href="?delete=<?php echo $row['BookID']; ?>" onclick="return confirm('Are you sure you want to delete this book?')">
                                 <button class="delete-btn">Delete</button>
                             </a>
                         </td>
                     </tr>
-
                 <?php endwhile; ?>
             <?php else: ?>
-                <tr>
-                    <td colspan="9" style="text-align:center;">No books found</td>
-                </tr>
+                <tr><td colspan="9">No books found.</td></tr>
             <?php endif; ?>
         </table>
-    </div>
 
-    <!-- Modal for Add Book -->
-    <div id="addBookModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Add Book</h2>
-            <form method="POST">
-                <label for="title">Title:</label>
-                <input type="text" name="title" id="title" required><br>
+        <!-- Add Book Modal -->
+        <div id="addBookModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeAddModal()">&times;</span>
+                <h2>Add Book</h2>
+                <form method="POST">
+                    <label for="title">Title:</label>
+                    <input type="text" name="title" id="title" required><br>
 
-                <label for="author">Author:</label>
-                <input type="text" name="author" id="author" required><br>
+                    <label for="author">Author:</label>
+                    <input type="text" name="author" id="author" required><br>
 
-                <label for="publisher">Publisher:</label>
-                <input type="text" name="publisher" id="publisher" required><br>
+                    <label for="publisher">Publisher:</label>
+                    <input type="text" name="publisher" id="publisher" required><br>
 
-                <label for="genre">Genre:</label>
-                <input type="text" name="genre" id="genre" required><br>
+                    <label for="genre">Genre:</label>
+                    <input type="text" name="genre" id="genre" required><br>
 
-                <label for="isbn">ISBN:</label>
-                <input type="text" name="isbn" id="isbn" required><br>
+                    <label for="isbn">ISBN:</label>
+                    <input type="text" name="isbn" id="isbn" required><br>
 
-                <label for="quantity">Quantity:</label>
-                <input type="number" name="quantity" id="quantity" required><br>
+                    <label for="quantity">Quantity:</label>
+                    <input type="number" name="quantity" id="quantity" required><br>
 
-                <input type="submit" name="add_book" value="Add Book">
-            </form>
+                    <label for="resourceId">Resource ID:</label>
+                    <input type="text" name="resourceId" id="resourceId" value="RES<?php echo strtoupper(uniqid()); ?>" required><br>
+
+                    <input type="submit" name="add_book" value="Add Book">
+                </form>
+            </div>
         </div>
-    </div>
+
 
     <!-- Modal for Edit Book -->
     <div id="editBookModal" class="modal">
         <div class="modal-content">
-        <span class="close">&times;</span>
+            <span class="close">&times;</span>
             <h2>Edit Book</h2>
             <form method="POST">
                 <input type="hidden" name="id" id="editBookId">
@@ -385,10 +412,15 @@ $result = $conn->query("SELECT * FROM Books");
                 <label for="editQuantity">Quantity:</label>
                 <input type="number" name="quantity" id="editQuantity" required><br>
 
+                <!-- Visible and editable resourceId field -->
+                <label for="editResourceId">Resource ID:</label>
+                <input type="text" name="resourceId" id="editResourceId" required><br>
+
                 <input type="submit" name="edit_book" value="Update Book">
             </form>
         </div>
     </div>
+
 
     <script>
         // Modal functionality
@@ -417,18 +449,31 @@ $result = $conn->query("SELECT * FROM Books");
 
         // Edit Book Modal - fill with current book details
         function editBook(bookId) {
-            var row = document.getElementById("book-" + bookId);
-            document.getElementById("editBookId").value = bookId;
-            document.getElementById("editTitle").value = row.cells[0].textContent;
-            document.getElementById("editAuthor").value = row.cells[1].textContent;
-            document.getElementById("editPublisher").value = row.cells[2].textContent;
-            document.getElementById("editGenre").value = row.cells[3].textContent;
-            document.getElementById("editIsbn").value = row.cells[4].textContent;
-            document.getElementById("editQuantity").value = row.cells[6].textContent;
+            var bookRow = document.getElementById('book-' + bookId);
+            var title = bookRow.cells[0].textContent;
+            var author = bookRow.cells[1].textContent;
+            var publisher = bookRow.cells[2].textContent;
+            var genre = bookRow.cells[3].textContent;
+            var isbn = bookRow.cells[4].textContent;
+            var quantity = bookRow.cells[6].textContent;
+            var resourceId = bookRow.cells[7].textContent;
 
-            editModal.style.display = "block";
+            document.getElementById('editBookId').value = bookId;
+            document.getElementById('editTitle').value = title;
+            document.getElementById('editAuthor').value = author;
+            document.getElementById('editPublisher').value = publisher;
+            document.getElementById('editGenre').value = genre;
+            document.getElementById('editIsbn').value = isbn;
+            document.getElementById('editQuantity').value = quantity;
+            document.getElementById('editResourceId').value = resourceId;
+
+            document.getElementById('editBookModal').style.display = "block";
         }
 
+        // Close Edit Book Modal
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
         window.onload = function() {
         const messages = document.querySelectorAll('.success-message, .error-message');
         

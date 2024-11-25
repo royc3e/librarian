@@ -1,14 +1,18 @@
 <?php
+include 'db.php';
 session_start();
+
+// Check if the user is logged in
 if (!isset($_SESSION['UserID'])) {
     header('Location: login.php');
     exit();
 }
 
-// Dynamic greeting based on user type
+// Get user data from session
 $userName = htmlspecialchars($_SESSION['Name']);
 $userType = htmlspecialchars($_SESSION['UserType']);
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -24,94 +28,89 @@ $userType = htmlspecialchars($_SESSION['UserType']);
             font-family: Arial, sans-serif;
             background-color: #f8f9fa;
         }
-        .sidebar {
-            height: 100vh;
-            width: 250px;
+        .navbar {
             background-color: #343a40;
+        }
+        .navbar .navbar-brand {
             color: white;
-            position: fixed;
-            top: 0;
-            left: 0;
-            padding: 20px 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: start;
-        }
-        .sidebar h2 {
             font-size: 1.5em;
-            margin-bottom: 20px;
         }
-        .sidebar a {
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 1em;
-            margin: 10px 0;
-            padding: 10px;
-            width: 100%;
-            text-align: left;
-            border-radius: 5px;
-            transition: background-color 0.3s ease;
+        .navbar .navbar-nav .nav-link {
+            color: white;
         }
-        .sidebar a:hover {
+        .navbar .navbar-nav .nav-link:hover {
             background-color: #495057;
         }
-        .logout-btn {
-            margin-top: auto;
-            text-decoration: none;
-            color: #ffffff;
-            background-color: #dc3545;
-            padding: 10px 15px;
-            border-radius: 5px;
-            text-align: center;
-            transition: background-color 0.3s ease;
-        }
-        .logout-btn:hover {
-            background-color: #c82333;
+        .navbar .nav-item {
+            margin-right: 20px;
         }
         .content {
-            margin-left: 270px; /* Sidebar width + margin */
             padding: 20px;
         }
         .welcome-message {
             font-size: 1.2em;
             margin-bottom: 20px;
         }
+        .logout-btn {
+            color: white;
+            background-color: #dc3545;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        .card-title {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2><?php echo ucfirst($userType); ?> Dashboard</h2>
-        <p>Welcome, <strong><?php echo $userName; ?></strong></p>
-        <p>User Type: <strong><?php echo ucfirst($userType); ?></strong></p>
-        <?php
-        // Dynamically generate sidebar links based on user type
-        if ($userType == 'admin') {
-            echo '<a href="user_management.php">Manage Users</a>';
-            echo '<a href="reports.php">Generate Reports</a>';
-        } elseif ($userType == 'student') {
-            echo '<a href="view_books.php">View Books</a>';
-            echo '<a href="borrow_book.php">Borrow Book</a>';
-            echo '<a href="my_borrowed_books.php">My Borrowed Books</a>';
-        } elseif ($userType == 'staff') {
-            echo '<a href="add_book.php">Add Book</a>';
-            echo '<a href="manage_books.php">Manage Books</a>';
-            echo '<a href="issue_book.php">Issue Book</a>';
-        } elseif ($userType == 'faculty') {
-            echo '<a href="recommend_books.php">Recommend Books</a>';
-            echo '<a href="borrow_book.php">Borrow Book</a>';
-            echo '<a href="my_borrowed_books.php">My Borrowed Books</a>';
-        } else {
-            echo '<p>Invalid User Type</p>';
-        }
-        ?>
-        <a href="logout.php" class="logout-btn">Logout</a>
-    </div>
-    <div class="content">
-        <h2>Dashboard</h2>
-        <p class="welcome-message">
-            Welcome to the <?php echo ucfirst($userType); ?> Dashboard. Use the sidebar to navigate.
-        </p>
-        <!-- Add additional dashboard content here -->
+
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="dashboard.php"><?php echo ucfirst($userType); ?> Dashboard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <span class="nav-link">Welcome, <?php echo $userName; ?></span>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link">User Type: <?php echo ucfirst($userType); ?></span>
+                    </li>
+                    <?php
+                    // Dynamically generate top nav links based on user type
+                    if ($userType == 'admin') {
+                        echo '<li class="nav-item"><a class="nav-link" href="user_management.php">Manage Users</a></li>';
+                        echo '<li class="nav-item"><a class="nav-link" href="reports.php">Generate Reports</a></li>';
+                    } elseif ($userType == 'student') {
+                        echo '<li class="nav-item"><a class="nav-link" href="view_books.php">View Books</a></li>';
+                        echo '<li class="nav-item"><a class="nav-link" href="borrow_book.php">Borrow Book</a></li>';
+                        echo '<li class="nav-item"><a class="nav-link" href="return_book.php">My Borrowed Books</a></li>';
+                    } elseif ($userType == 'staff') {
+                        echo '<li class="nav-item"><a class="nav-link" href="add_book.php">Add Book</a></li>';
+                        echo '<li class="nav-item"><a class="nav-link" href="manage_books.php">Manage Books</a></li>';
+                        echo '<li class="nav-item"><a class="nav-link" href="issue_book.php">Issue Book</a></li>';
+                    } elseif ($userType == 'faculty') {
+                        echo '<li class="nav-item"><a class="nav-link" href="recommend_books.php">Recommend Books</a></li>';
+                        echo '<li class="nav-item"><a class="nav-link" href="borrow_book.php">Borrow Book</a></li>';
+                        echo '<li class="nav-item"><a class="nav-link" href="return_book.php">My Borrowed Books</a></li>';
+                    }
+                    ?>
+                    <li class="nav-item">
+                        <a class="nav-link logout-btn" href="logout.php">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+        <!-- Overview Card -->
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title"><?php echo ucfirst($userType); ?> Overview</h5>
@@ -135,5 +134,6 @@ $userType = htmlspecialchars($_SESSION['UserType']);
 
     <!-- Include Bootstrap JS for optional interactivity -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
 </html>

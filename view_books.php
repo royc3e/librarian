@@ -1,5 +1,16 @@
 <?php
+session_start();
+
 include 'db.php'; // Database connection
+include 'navigation.php';
+
+
+// Check if user is logged in
+if (!isset($_SESSION['UserID'])) {
+    header('Location: login.php');
+    exit();
+}
+
 
 // Initialize searchTerm to prevent undefined variable error
 $searchTerm = "";
