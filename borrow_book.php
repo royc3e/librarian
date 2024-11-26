@@ -16,28 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $userID = $_SESSION['UserID'];
     $borrowDate = date("Y-m-d");
     $dueDate = date("Y-m-d", strtotime("+14 days"));
+    $status = 'Pending';  // Status set to Pending initially
 
     // Start a transaction to ensure data consistency
     $conn->begin_transaction();
 
     try {
-        // Insert the borrowing transaction into the Transactions table
-        $sql = "INSERT INTO Transactions (UserID, ResourceID, BorrowDate, DueDate) 
-                VALUES ($userID, $resourceID, '$borrowDate', '$dueDate')";
+        // Insert the borrowing transaction into the Transactions table with status Pending
+        $sql = "INSERT INTO Transactions (UserID, ResourceID, BorrowDate, DueDate, Status) 
+                VALUES ($userID, $resourceID, '$borrowDate', '$dueDate', '$status')";
         if (!$conn->query($sql)) {
             throw new Exception("Error inserting transaction: " . $conn->error);
         }
 
-        // Update the available copies of the book in the Books table
-        $updateSql = "UPDATE Books SET AvailableQuantity = AvailableQuantity - 1 
-                      WHERE ResourceID = $resourceID AND AvailableQuantity > 0";
-        if (!$conn->query($updateSql)) {
-            throw new Exception("Error updating book availability: " . $conn->error);
-        }
-
         // Commit the transaction if everything is successful
         $conn->commit();
-        echo "<div class='success-message'>Book borrowed successfully!</div>";
+        echo "<div class='success-message'>Borrow request submitted and is pending approval!</div>";
     } catch (Exception $e) {
         // Rollback the transaction if there was an error
         $conn->rollback();
@@ -71,10 +65,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </select>
         </div>
 
-        <button type="submit" class="btn btn-success btn-lg w-100">Borrow Book</button>
+        <button type="submit" class="btn btn-success btn-lg w-100">Submit Borrow Request</button>
     </form>
 
     <h3 class="text-center my-4">Available Books</h3>
+    <!-- Table to display all available books -->
     <table class="table table-striped table-bordered">
         <thead>
             <tr>
@@ -83,28 +78,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <th>Publisher</th>
                 <th>Genre</th>
                 <th>ISBN</th>
-                <th>Available Copies</th>
+                <th>Available Quantity</th>
             </tr>
         </thead>
         <tbody>
             <?php
-            // Query to fetch available books
+            // Query to fetch all available books
             $booksSql = "SELECT Title, Author, Publisher, Genre, ISBN, AvailableQuantity FROM Books WHERE AvailableQuantity > 0";
             $booksResult = $conn->query($booksSql);
 
             if ($booksResult->num_rows > 0) {
                 while ($book = $booksResult->fetch_assoc()) {
                     echo "<tr>
-                            <td>" . $book['Title'] . "</td>
-                            <td>" . $book['Author'] . "</td>
-                            <td>" . $book['Publisher'] . "</td>
-                            <td>" . $book['Genre'] . "</td>
-                            <td>" . $book['ISBN'] . "</td>
+                            <td>" . htmlspecialchars($book['Title']) . "</td>
+                            <td>" . htmlspecialchars($book['Author']) . "</td>
+                            <td>" . htmlspecialchars($book['Publisher']) . "</td>
+                            <td>" . htmlspecialchars($book['Genre']) . "</td>
+                            <td>" . htmlspecialchars($book['ISBN']) . "</td>
                             <td>" . $book['AvailableQuantity'] . "</td>
                           </tr>";
                 }
             } else {
-                echo "<tr><td colspan='6' class='text-center'>No books available for borrowing</td></tr>";
+                echo "<tr><td colspan='6' class='text-center'>No books available</td></tr>";
             }
             ?>
         </tbody>

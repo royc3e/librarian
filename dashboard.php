@@ -86,6 +86,7 @@ $userType = htmlspecialchars($_SESSION['UserType']);
                     <?php
                     // Dynamically generate top nav links based on user type
                     if ($userType == 'admin') {
+                        echo '<li class="nav-item"><a class="nav-link" href="add_book.php">Add Book</a></li>';
                         echo '<li class="nav-item"><a class="nav-link" href="user_management.php">Manage Users</a></li>';
                         echo '<li class="nav-item"><a class="nav-link" href="reports.php">Generate Reports</a></li>';
                     } elseif ($userType == 'student') {
@@ -93,7 +94,6 @@ $userType = htmlspecialchars($_SESSION['UserType']);
                         echo '<li class="nav-item"><a class="nav-link" href="borrow_book.php">Borrow Book</a></li>';
                         echo '<li class="nav-item"><a class="nav-link" href="return_book.php">My Borrowed Books</a></li>';
                     } elseif ($userType == 'staff') {
-                        echo '<li class="nav-item"><a class="nav-link" href="add_book.php">Add Book</a></li>';
                         echo '<li class="nav-item"><a class="nav-link" href="manage_books.php">Manage Books</a></li>';
                         echo '<li class="nav-item"><a class="nav-link" href="issue_book.php">Issue Book</a></li>';
                     } elseif ($userType == 'faculty') {
